@@ -1,0 +1,105 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id           String   @id @default(cuid())
+  email        String   @unique
+  passwordHash String
+  createdAt    DateTime @default(now())
+  profile      Profile?
+  hostedTrips  Trip[]   @relation("TripHost")
+  memberships  TripMember[]
+  messages     ChatMessage[]
+}
+
+model Profile {
+  id          String   @id @default(cuid())
+  userId      String   @unique
+  displayName String
+  homeCity    String?
+  bio         String?
+  interests   String[] @default([])
+  budgetMin   Int?
+  budgetMax   Int?
+  preferredDestinations String[] @default([])
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  updatedAt   DateTime @updatedAt
+}
+
+model Trip {
+  id            String          @id @default(cuid())
+  destination   String
+  region        String?
+  description   String          @default("")
+  startsAt      DateTime
+  endsAt        DateTime
+  budgetPerPerson Int
+  maxMembers    Int             @default(8)
+  interests     String[]        @default([])
+  hostId        String
+  createdAt     DateTime        @default(now())
+  host          User            @relation("TripHost", fields: [hostId], references: [id], onDelete: Cascade)
+  members       TripMember[]
+  itinerary     ItineraryItem[]
+  expenses      TripExpense[]
+  messages      ChatMessage[]
+
+  @@index([destination, startsAt])
+  @@index([startsAt, endsAt])
+}
+
+model TripMember {
+  id        String   @id @default(cuid())
+  tripId    String
+  userId    String
+  joinedAt  DateTime @default(now())
+  trip      Trip     @relation(fields: [tripId], references: [id], onDelete: Cascade)
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([tripId, userId])
+  @@index([userId])
+}
+
+model ItineraryItem {
+  id          String   @id @default(cuid())
+  tripId      String
+  title       String
+  details     String   @default("")
+  scheduledAt DateTime?
+  sortOrder   Int      @default(0)
+  createdAt   DateTime @default(now())
+  trip        Trip     @relation(fields: [tripId], references: [id], onDelete: Cascade)
+
+  @@index([tripId, sortOrder])
+}
+
+model TripExpense {
+  id          String   @id @default(cuid())
+  tripId      String
+  title       String
+  amount      Int
+  notes       String   @default("")
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  trip        Trip     @relation(fields: [tripId], references: [id], onDelete: Cascade)
+
+  @@index([tripId])
+}
+
+model ChatMessage {
+  id        String   @id @default(cuid())
+  tripId    String
+  userId    String
+  content   String
+  createdAt DateTime @default(now())
+  trip      Trip     @relation(fields: [tripId], references: [id], onDelete: Cascade)
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([tripId, createdAt])
+}
